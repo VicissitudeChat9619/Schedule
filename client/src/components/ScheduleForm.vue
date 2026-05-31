@@ -20,7 +20,7 @@
           v-model="form.startTime"
           type="datetime"
           placeholder="选择开始时间"
-          format="YYYY-MM-DD HH:mm"
+          format="YYYY-MM-DD HH:mm:ss"
           value-format="YYYY-MM-DD HH:mm:ss"
           style="width: 100%"
           @change="onStartTimeChange"
@@ -135,7 +135,7 @@ function calcDurationMinutes(start, end) {
 
 function calcEndTime() {
   if (!form.startTime || computedDuration.value <= 0) return ''
-  return dayjs(form.startTime).add(computedDuration.value, 'minute').format('YYYY-MM-DD HH:mm')
+  return dayjs(form.startTime).add(computedDuration.value, 'minute').format('YYYY-MM-DD HH:mm:ss')
 }
 
 function onStartTimeChange() {

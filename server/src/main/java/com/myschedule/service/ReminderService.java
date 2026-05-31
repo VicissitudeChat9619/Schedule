@@ -184,7 +184,7 @@ public class ReminderService {
 
             JsonNode jsonNode = objectMapper.readTree(response);
             if ("ok".equals(jsonNode.get("status").asText())) {
-                log.info("Reminder sent to QQ {}: {}", targetUserId, message.substring(0, 50));
+                log.info("Reminder sent to QQ {}: {}", targetUserId, message.substring(0, Math.min(50, message.length())));
                 return response;
             }
             log.warn("NapCat returned non-ok status: {}", response);

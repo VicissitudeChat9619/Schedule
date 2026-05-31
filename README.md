@@ -106,83 +106,67 @@ myschedule/
 
 ## 快速开始
 
-### 0. 配置文件（重要）
+### 项目中哪些是服务端、哪些是客户端
 
-#### 客户端配置
+| 目录/文件 | 部署位置 | 说明 |
+|---|---|---|
+| `server/` | **服务器** | Spring Boot 后端，含提醒调度 |
+| `sql/` | **服务器** | 数据库初始化脚本 |
+| `napcat/` | **服务器** | NapCat 部署参考文档 |
+| `client/` | **Windows 客户端** | Electron + Vue 前端 |
+| `start-client.bat` | **Windows 客户端** | 一键启动脚本 |
+
+> 服务端负责数据库、定时提醒、QQ 消息推送，关闭客户端不影响提醒功能。
+
+---
+
+### 一、服务端部署（在服务器上操作）
+
+以下文件上传到服务器后执行：
+
+#### 1. 数据库初始化
 
 ```bash
-cd client/src
-cp config.example.js config.js
+mysql -u root -p < sql/init.sql
 ```
 
-编辑 `config.js`，填入你的服务器地址：
-
-```js
-export default {
-  serverHost: '你的服务器IP',   // 如 192.168.1.100
-  serverPort: 8080,
-}
-```
-
-#### 服务端配置
+#### 2. 配置服务端
 
 ```bash
 cd server/src/main/resources
 cp application-local.example.yml application-local.yml
 ```
 
-编辑 `application-local.yml`，填入数据库密码等信息：
+编辑 `application-local.yml`：
 
 ```yaml
 spring:
   datasource:
     url: jdbc:mysql://你的服务器IP:3306/schedule
+    username: root
     password: 你的MySQL密码
+
+napcat:
+  api-url: http://localhost:3000    # NapCat API 地址
 ```
 
-> ⚠️ `config.js` 和 `application-local.yml` 已在 `.gitignore` 中排除，不会提交到 Git。
+> ⚠️ `application-local.yml` 已在 `.gitignore` 中，不会提交到 Git。
 
-启动服务端时指定 profile：
-
-```bash
-java -jar target/myschedule-server-1.0.0.jar --spring.profiles.active=local
-```
-
-### 1. 启动客户端
-
-双击 `start-client.bat` 或桌面快捷方式：
-
-```bash
-cd client
-npm install       # 首次运行
-npm run dev       # 浏览器 http://localhost:5173
-# 或
-npm run electron:dev   # Electron 桌面版
-```
-
-### 2. 数据库初始化
-
-在服务器 MySQL 中执行：
-
-```bash
-mysql -u root -p < sql/init.sql
-```
-
-### 3. 启动后端
+#### 3. 编译并启动后端
 
 ```bash
 cd server
 mvn clean package -DskipTests
-java -jar target/myschedule-server-1.0.0.jar
+java -jar target/myschedule-server-1.0.0.jar --spring.profiles.active=local
 ```
 
 服务默认运行在 `http://localhost:8080`。
 
-### 4. 部署 NapCat
+#### 4. 部署 NapCat
 
 ```bash
 docker run -d --name napcat --restart=always \
-  -e ACCOUNT=<你的QQ号> \
+  -e ACCOUNT=<机器人的QQ号> \
   -p 3000:3000 -p 6099:6099 \
   -v /root/napcat/config:/app/napcat/config \
   -v /root/napcat/data:/app/napcat/data \
@@ -190,9 +174,51 @@ docker run -d --name napcat --restart=always \
   mlikiowa/napcat-docker:latest
 ```
 
-打开 WebUI `http://<服务器IP>:6099/webui` 扫码登录，然后在 OneBot11 配置中启用 HTTP 服务器（端口 3000）。
+打开 `http://<服务器IP>:6099/webui` 扫码登录，然后在 OneBot11 网络配置中添加 HTTP 服务器（`0.0.0.0:3000`）。
 
-### 5. 使用流程
+---
+
+### 二、客户端启动（在 Windows 上操作）
+
+以下文件保留在本机：
+
+#### 1. 安装依赖（仅首次）
+
+```bash
+cd client
+npm install
+```
+
+#### 2. 配置客户端
+
+```bash
+cd client/src
+cp config.example.js config.js
+```
+
+编辑 `config.js`：
+
+```js
+export default {
+  serverHost: '你的服务器IP',   // 例如 182.254.173.17
+  serverPort: 8080,
+}
+```
+
+#### 3. 启动
+
+双击 `start-client.bat`，或：
+
+```bash
+cd client
+npm run dev            # 浏览器访问 http://localhost:5173
+# 或
+npm run electron:dev   # Electron 桌面版
+```
+
+---
+
+### 三、使用流程
 
 1. 客户端注册/登录账户
 2. 在「设置」页面绑定 QQ 号

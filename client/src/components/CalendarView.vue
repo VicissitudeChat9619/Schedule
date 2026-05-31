@@ -82,8 +82,7 @@ function formatEventTime(evt) {
 
 function isExpired(evt) {
   const now = dayjs()
-  const expireTime = evt.endTime ? dayjs(evt.endTime) : dayjs(evt.startTime)
-  return now.isAfter(expireTime)
+  return now.isAfter(dayjs(evt.startTime))
 }
 
 function durationMinutes(evt) {

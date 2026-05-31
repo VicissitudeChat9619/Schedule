@@ -28,11 +28,10 @@
               :key="evt.id"
               class="event-bar"
               :style="eventBarStyle(evt, day.events)"
-              :title="evt.title + (evt.description ? '\n' + evt.description : '')"
+              :title="formatEventTime(evt) + ' ' + evt.title + (evt.description ? '\n' + evt.description : '')"
               @click.stop="onEventClick(evt)"
             >
-              <span class="event-time">{{ formatEventTime(evt) }}</span>
-              <span class="event-title">{{ evt.title }}</span>
+              {{ evt.title }}
             </div>
             <div v-if="day.events.length > maxVisible" class="more-events" @click.stop="onDayClick(day)">
               +{{ day.events.length - maxVisible }} 更多
@@ -55,7 +54,7 @@ const props = defineProps({
 const emit = defineEmits(['dayClick', 'eventClick'])
 
 const currentDate = ref(dayjs())
-const maxVisible = ref(2)
+const maxVisible = ref(3)
 
 const COLORS = [
   '#409eff', '#67c23a', '#e6a23c', '#f56c6c',
@@ -191,7 +190,7 @@ function onEventClick(evt) {
 }
 
 .day-cell {
-  min-height: 100px;
+  min-height: 110px;
   padding: 4px;
   border-right: 1px solid #ebeef5;
   border-bottom: 1px solid #ebeef5;
@@ -243,34 +242,22 @@ function onEventClick(evt) {
 
 .event-bar {
   border-radius: 3px;
-  padding: 1px 4px;
+  padding: 2px 5px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   cursor: pointer;
   transition: opacity 0.15s;
-  display: flex;
-  gap: 2px;
-  align-items: center;
   font-size: 11px;
   color: #fff;
-  line-height: 1.4;
+  line-height: 1.6;
+  font-weight: 500;
 }
 
 .event-bar:hover {
   opacity: 1 !important;
   z-index: 99 !important;
-}
-
-.event-time {
-  font-size: 10px;
-  opacity: 0.85;
-  flex-shrink: 0;
-}
-
-.event-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  filter: brightness(1.1);
 }
 
 .more-events {

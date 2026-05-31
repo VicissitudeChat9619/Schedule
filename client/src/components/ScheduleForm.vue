@@ -28,19 +28,13 @@
       </el-form-item>
 
       <el-form-item label="持续时间">
-        <div style="display: flex; gap: 8px; width: 100%">
-          <el-input-number
-            v-model="form.durationValue"
-            :min="0"
-            :max="999"
-            placeholder="0"
-            style="flex: 1"
-            @change="onDurationChange"
-          />
-          <el-select v-model="form.durationUnit" style="width: 100px" @change="onDurationChange">
-            <el-option label="分钟" value="minute" />
-            <el-option label="小时" value="hour" />
-          </el-select>
+        <div style="display: flex; gap: 6px; align-items: center; width: 100%">
+          <el-input-number v-model="form.durationDays" :min="0" :max="365" placeholder="0" size="default" controls-position="right" style="width: 80px" @change="onDurationChange" />
+          <span style="white-space: nowrap; color: #606266">天</span>
+          <el-input-number v-model="form.durationHours" :min="0" :max="23" placeholder="0" size="default" controls-position="right" style="width: 80px" @change="onDurationChange" />
+          <span style="white-space: nowrap; color: #606266">小时</span>
+          <el-input-number v-model="form.durationMinutes" :min="0" :max="59" placeholder="0" size="default" controls-position="right" style="width: 80px" @change="onDurationChange" />
+          <span style="white-space: nowrap; color: #606266">分</span>
         </div>
       </el-form-item>
 
@@ -99,15 +93,15 @@ const form = reactive({
   description: '',
   startTime: null,
   endTime: null,
-  durationValue: 0,
-  durationUnit: 'minute',
+  durationDays: 0,
+  durationHours: 0,
+  durationMinutes: 0,
   repeatType: 'NONE',
   reminderBeforeMinutes: 15
 })
 
 const computedDuration = computed(() => {
-  if (!form.durationValue || form.durationValue <= 0) return 0
-  return form.durationUnit === 'hour' ? form.durationValue * 60 : form.durationValue
+  return form.durationDays * 1440 + form.durationHours * 60 + form.durationMinutes
 })
 
 const rules = {
@@ -125,8 +119,9 @@ watch(() => props.schedule, (val) => {
     form.repeatType = val.repeatType || 'NONE'
     form.reminderBeforeMinutes = val.reminderBeforeMinutes || 15
     const diff = calcDurationMinutes(val.startTime, val.endTime)
-    form.durationValue = diff > 0 ? diff : 0
-    form.durationUnit = 'minute'
+    form.durationDays = Math.floor(diff / 1440)
+    form.durationHours = Math.floor((diff % 1440) / 60)
+    form.durationMinutes = diff % 60
   } else {
     isEdit.value = false
     resetForm()
@@ -162,8 +157,9 @@ function resetForm() {
   form.description = ''
   form.startTime = null
   form.endTime = null
-  form.durationValue = 0
-  form.durationUnit = 'minute'
+  form.durationDays = 0
+  form.durationHours = 0
+  form.durationMinutes = 0
   form.repeatType = 'NONE'
   form.reminderBeforeMinutes = 15
   formRef.value?.resetFields()

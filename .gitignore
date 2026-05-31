@@ -1,0 +1,22 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Maven
+server/target/
+server/**/target/
+
+# Node
+client/node_modules/
+client/dist/
+client/dist-electron/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+*.log

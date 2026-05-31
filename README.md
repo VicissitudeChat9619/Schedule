@@ -185,7 +185,12 @@ docker run -d --name napcat --restart=always \
 
 ### 二、客户端启动（在 Windows 上操作）
 
-以下文件保留在本机：
+以下文件保留在本机，无需上传到服务器：
+
+| 保留内容 | 说明 |
+|---|---|
+| `client/` 目录 | Vue + Electron 前端源码 |
+| `start-client.bat` | 一键启动脚本 |
 
 #### 1. 安装依赖（仅首次）
 

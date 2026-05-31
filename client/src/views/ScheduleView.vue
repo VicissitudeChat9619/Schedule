@@ -3,14 +3,18 @@
     <div class="page-header">
       <h2>日程管理</h2>
       <div class="header-actions">
-        <el-button type="danger" plain :disabled="selectedIds.length === 0" @click="handleBatchDelete">
+        <el-radio-group v-model="viewMode" size="small">
+          <el-radio-button value="list">列表</el-radio-button>
+          <el-radio-button value="calendar">日历</el-radio-button>
+        </el-radio-group>
+        <el-button v-if="viewMode === 'list'" type="danger" plain :disabled="selectedIds.length === 0" @click="handleBatchDelete">
           批量删除 ({{ selectedIds.length }})
         </el-button>
         <el-button type="primary" @click="openCreateDialog">新建日程</el-button>
       </div>
     </div>
 
-    <el-card>
+    <el-card v-if="viewMode === 'list'">
       <el-table :data="schedules" style="width: 100%" v-loading="loading" empty-text="暂无日程"
                 @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="50" />
@@ -49,6 +53,13 @@
       </el-table>
     </el-card>
 
+    <CalendarView
+      v-else
+      :schedules="schedules"
+      @day-click="onCalendarDayClick"
+      @event-click="onCalendarEventClick"
+    />
+
     <ScheduleFormDialog
       v-model:visible="dialogVisible"
       :schedule="editingSchedule"
@@ -60,14 +71,17 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import dayjs from 'dayjs'
 import api from '../api'
 import ScheduleFormDialog from '../components/ScheduleForm.vue'
+import CalendarView from '../components/CalendarView.vue'
 
 const schedules = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const editingSchedule = ref(null)
 const selectedIds = ref([])
+const viewMode = ref('calendar')
 
 function formatTime(time) {
   if (!time) return '-'
@@ -97,14 +111,22 @@ async function fetchSchedules() {
   }
 }
 
-function openCreateDialog() {
-  editingSchedule.value = null
+function openCreateDialog(startTime) {
+  editingSchedule.value = startTime ? { startTime } : null
   dialogVisible.value = true
 }
 
 function openEditDialog(schedule) {
   editingSchedule.value = { ...schedule }
   dialogVisible.value = true
+}
+
+function onCalendarDayClick(dateStr) {
+  openCreateDialog(dateStr + ' 09:00:00')
+}
+
+function onCalendarEventClick(evt) {
+  openEditDialog(evt)
 }
 
 async function handleDelete(id) {

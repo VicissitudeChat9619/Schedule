@@ -107,8 +107,10 @@ const days = computed(() => {
   while (d.isBefore(end) || d.isSame(end, 'day')) {
     const dateStr = d.format('YYYY-MM-DD')
     const events = props.schedules.filter(s => {
-      const sDate = dayjs(s.startTime).format('YYYY-MM-DD')
-      return sDate === dateStr && s.status !== false
+      if (s.status === false) return false
+      const sStart = dayjs(s.startTime).format('YYYY-MM-DD')
+      const sEnd = s.endTime ? dayjs(s.endTime).format('YYYY-MM-DD') : sStart
+      return dateStr >= sStart && dateStr <= sEnd
     })
 
     result.push({

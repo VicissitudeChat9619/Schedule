@@ -201,7 +201,8 @@ public class ReminderService {
     private void checkExpiredSchedules(LocalDateTime now) {
         List<Schedule> schedules = scheduleRepository.findByStatusTrueAndExpiredNotifiedFalse();
         for (Schedule schedule : schedules) {
-            if (now.isAfter(schedule.getStartTime())) {
+            LocalDateTime expireTime = schedule.getEndTime() != null ? schedule.getEndTime() : schedule.getStartTime();
+            if (now.isAfter(expireTime)) {
                 sendExpiredNotification(schedule);
             }
         }

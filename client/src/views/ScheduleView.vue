@@ -90,7 +90,8 @@ const viewMode = ref('calendar')
 const expiredSchedules = computed(() => {
   const now = dayjs()
   return schedules.value.filter(s => {
-    return now.isAfter(dayjs(s.startTime)) && s.status !== false
+    const expireTime = s.endTime ? dayjs(s.endTime) : dayjs(s.startTime)
+    return now.isAfter(expireTime) && s.status !== false
   })
 })
 
@@ -110,7 +111,8 @@ function handleSelectionChange(selection) {
 
 function getRowClass({ row }) {
   const now = dayjs()
-  return now.isAfter(dayjs(row.startTime)) ? 'row-expired' : ''
+  const expireTime = row.endTime ? dayjs(row.endTime) : dayjs(row.startTime)
+  return now.isAfter(expireTime) ? 'row-expired' : ''
 }
 
 async function fetchSchedules() {

@@ -120,7 +120,6 @@ public class TodoService {
                     .title(todo.getTitle())
                     .description(todo.getDescription())
                     .startTime(todo.getDueTime() != null ? todo.getDueTime() : LocalDateTime.now().plusHours(1))
-                    .endTime(todo.getDueTime() != null ? todo.getDueTime().plusHours(1) : null)
                     .reminderBeforeMinutes(todo.getReminderBeforeMinutes())
                     .build();
 

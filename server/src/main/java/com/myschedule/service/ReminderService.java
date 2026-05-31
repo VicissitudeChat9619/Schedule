@@ -203,7 +203,12 @@ public class ReminderService {
         for (Schedule schedule : schedules) {
             LocalDateTime expireTime = schedule.getEndTime() != null ? schedule.getEndTime() : schedule.getStartTime();
             if (now.isAfter(expireTime)) {
-                sendExpiredNotification(schedule);
+                if (schedule.getAutoDelete() != null && schedule.getAutoDelete()) {
+                    log.info("Auto-deleting expired schedule: {}", schedule.getTitle());
+                    scheduleRepository.delete(schedule);
+                } else {
+                    sendExpiredNotification(schedule);
+                }
             }
         }
     }

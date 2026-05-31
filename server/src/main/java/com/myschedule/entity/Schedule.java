@@ -47,6 +47,10 @@ public class Schedule {
     @Builder.Default
     private Boolean expiredNotified = false;
 
+    @Column(name = "auto_delete")
+    @Builder.Default
+    private Boolean autoDelete = false;
+
     @Builder.Default
     private Boolean status = true;
 

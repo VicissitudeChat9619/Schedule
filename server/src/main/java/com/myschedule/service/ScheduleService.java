@@ -30,6 +30,7 @@ public class ScheduleService {
                 .endTime(request.getEndTime())
                 .repeatType(request.getRepeatType() != null ? request.getRepeatType() : "NONE")
                 .reminderBeforeMinutes(request.getReminderBeforeMinutes() != null ? request.getReminderBeforeMinutes() : 15)
+                .autoDelete(request.getAutoDelete() != null ? request.getAutoDelete() : false)
                 .build();
 
         return scheduleRepository.save(schedule);
@@ -49,6 +50,7 @@ public class ScheduleService {
         schedule.setEndTime(request.getEndTime());
         schedule.setRepeatType(request.getRepeatType() != null ? request.getRepeatType() : "NONE");
         schedule.setReminderBeforeMinutes(request.getReminderBeforeMinutes() != null ? request.getReminderBeforeMinutes() : 15);
+        schedule.setAutoDelete(request.getAutoDelete() != null ? request.getAutoDelete() : false);
 
         return scheduleRepository.save(schedule);
     }

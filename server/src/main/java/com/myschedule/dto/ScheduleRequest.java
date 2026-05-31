@@ -20,4 +20,6 @@ public class ScheduleRequest {
     private String repeatType = "NONE";
 
     private Integer reminderBeforeMinutes = 15;
+
+    private Boolean autoDelete = false;
 }

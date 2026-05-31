@@ -61,6 +61,10 @@
           <el-option label="2 小时" :value="120" />
         </el-select>
       </el-form-item>
+
+      <el-form-item label="">
+        <el-checkbox v-model="form.autoDelete">过期后自动删除（不发送提醒）</el-checkbox>
+      </el-form-item>
     </el-form>
 
     <template #footer>
@@ -97,7 +101,8 @@ const form = reactive({
   durationHours: 0,
   durationMinutes: 0,
   repeatType: 'NONE',
-  reminderBeforeMinutes: 15
+  reminderBeforeMinutes: 15,
+  autoDelete: false
 })
 
 const computedDuration = computed(() => {
@@ -118,6 +123,7 @@ watch(() => props.schedule, (val) => {
     form.endTime = val.endTime || null
     form.repeatType = val.repeatType || 'NONE'
     form.reminderBeforeMinutes = val.reminderBeforeMinutes || 15
+    form.autoDelete = val.autoDelete || false
     const diff = calcDurationMinutes(val.startTime, val.endTime)
     form.durationDays = Math.floor(diff / 1440)
     form.durationHours = Math.floor((diff % 1440) / 60)
@@ -162,6 +168,7 @@ function resetForm() {
   form.durationMinutes = 0
   form.repeatType = 'NONE'
   form.reminderBeforeMinutes = 15
+  form.autoDelete = false
   formRef.value?.resetFields()
   isEdit.value = false
 }
@@ -178,7 +185,8 @@ async function handleSubmit() {
       startTime: form.startTime,
       endTime: form.endTime || null,
       repeatType: form.repeatType,
-      reminderBeforeMinutes: form.reminderBeforeMinutes
+      reminderBeforeMinutes: form.reminderBeforeMinutes,
+      autoDelete: form.autoDelete
     }
 
     if (isEdit.value && props.schedule?.id) {

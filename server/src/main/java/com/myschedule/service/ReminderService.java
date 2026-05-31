@@ -19,12 +19,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
 public class ReminderService {
 
     private static final Logger log = LoggerFactory.getLogger(ReminderService.class);
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final ScheduleRepository scheduleRepository;
     private final TodoRepository todoRepository;
@@ -214,9 +216,9 @@ public class ReminderService {
 
         String message = "【日程过期提醒】\n您的日程「" + schedule.getTitle() + "」";
         if (schedule.getEndTime() != null) {
-            message += "已于 " + schedule.getEndTime() + " 过期";
+            message += "已于 " + schedule.getEndTime().format(DT_FMT) + " 过期";
         } else {
-            message += "已于 " + schedule.getStartTime() + " 过期";
+            message += "已于 " + schedule.getStartTime().format(DT_FMT) + " 过期";
         }
         message += "，请及时处理。";
 

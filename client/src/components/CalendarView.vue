@@ -27,6 +27,7 @@
               v-for="evt in day.events"
               :key="evt.id"
               class="event-bar"
+              :class="{ 'is-expired': isExpired(evt) }"
               :style="eventBarStyle(evt, day.events)"
               :title="formatEventTime(evt) + ' ' + evt.title + (evt.description ? '\n' + evt.description : '')"
               @click.stop="onEventClick(evt)"
@@ -79,6 +80,12 @@ function formatEventTime(evt) {
   return dayjs(evt.startTime).format('HH:mm')
 }
 
+function isExpired(evt) {
+  const now = dayjs()
+  const expireTime = evt.endTime ? dayjs(evt.endTime) : dayjs(evt.startTime)
+  return now.isAfter(expireTime)
+}
+
 function durationMinutes(evt) {
   if (!evt.endTime) return 60
   return dayjs(evt.endTime).diff(dayjs(evt.startTime), 'minute')
@@ -89,6 +96,15 @@ function eventBarStyle(evt, allEvents) {
   const dur = durationMinutes(evt)
   const pct = Math.min(100, Math.max(20, (dur / 480) * 100))
   const idx = allEvents.indexOf(evt)
+  if (isExpired(evt)) {
+    return {
+      borderColor: '#f56c6c',
+      color: '#f56c6c',
+      background: 'transparent',
+      width: pct + '%',
+      zIndex: allEvents.length - idx
+    }
+  }
   return {
     background: color,
     width: pct + '%',
@@ -260,6 +276,19 @@ function onEventClick(evt) {
   opacity: 1 !important;
   z-index: 99 !important;
   filter: brightness(1.1);
+}
+
+.event-bar.is-expired {
+  background: transparent !important;
+  color: #f56c6c;
+  border: 1.5px dashed #f56c6c;
+  opacity: 1;
+  font-weight: 600;
+}
+
+.event-bar.is-expired:hover {
+  background: rgba(245, 108, 108, 0.1) !important;
+  filter: none;
 }
 
 .more-events {

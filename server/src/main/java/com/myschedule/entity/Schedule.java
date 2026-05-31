@@ -43,6 +43,10 @@ public class Schedule {
     @Builder.Default
     private Boolean reminderSent = false;
 
+    @Column(name = "expired_notified")
+    @Builder.Default
+    private Boolean expiredNotified = false;
+
     @Builder.Default
     private Boolean status = true;
 

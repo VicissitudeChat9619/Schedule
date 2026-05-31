@@ -21,4 +21,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     @Query("SELECT s FROM Schedule s WHERE s.repeatType != 'NONE' AND s.status = true")
     List<Schedule> findRecurringSchedules();
+
+    List<Schedule> findByStatusTrueAndExpiredNotifiedFalse();
 }

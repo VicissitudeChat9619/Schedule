@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `schedule` (
     repeat_type VARCHAR(20) DEFAULT 'NONE' COMMENT 'NONE/DAILY/WEEKLY/MONTHLY',
     reminder_before_minutes INT DEFAULT 15,
     reminder_sent TINYINT(1) DEFAULT 0,
+    expired_notified TINYINT(1) DEFAULT 0,
     status TINYINT(1) DEFAULT 1 COMMENT '1=active 0=cancelled',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

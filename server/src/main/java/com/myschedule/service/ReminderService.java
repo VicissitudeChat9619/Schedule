@@ -54,6 +54,7 @@ public class ReminderService {
         LocalDateTime now = LocalDateTime.now();
         checkScheduleReminders(now);
         checkTodoReminders(now);
+        checkExpiredSchedules(now);
     }
 
     private void checkScheduleReminders(LocalDateTime now) {
@@ -192,6 +193,49 @@ public class ReminderService {
         } catch (Exception e) {
             log.error("Failed to send QQ message to {}: {}", targetUserId, e.getMessage());
             return null;
+        }
+    }
+
+    private void checkExpiredSchedules(LocalDateTime now) {
+        List<Schedule> schedules = scheduleRepository.findByStatusTrueAndExpiredNotifiedFalse();
+        for (Schedule schedule : schedules) {
+            LocalDateTime expireTime = schedule.getEndTime() != null ? schedule.getEndTime() : schedule.getStartTime();
+            if (now.isAfter(expireTime)) {
+                sendExpiredNotification(schedule);
+            }
+        }
+    }
+
+    private void sendExpiredNotification(Schedule schedule) {
+        User user = userRepository.findById(schedule.getUserId()).orElse(null);
+        if (user == null || user.getQqNumber() == null) {
+            return;
+        }
+
+        String message = "【日程过期提醒】\n您的日程「" + schedule.getTitle() + "」";
+        if (schedule.getEndTime() != null) {
+            message += "已于 " + schedule.getEndTime() + " 过期";
+        } else {
+            message += "已于 " + schedule.getStartTime() + " 过期";
+        }
+        message += "，请及时处理。";
+
+        String result = sendToQQ(user.getNapcatUserId(), message);
+
+        ReminderLog log = ReminderLog.builder()
+                .userId(user.getId())
+                .targetType("SCHEDULE_EXPIRED")
+                .targetId(schedule.getId())
+                .content(message)
+                .sendStatus(result != null ? "SUCCESS" : "FAILED")
+                .response(result)
+                .sendTime(LocalDateTime.now())
+                .build();
+        reminderLogRepository.save(log);
+
+        if (result != null) {
+            schedule.setExpiredNotified(true);
+            scheduleRepository.save(schedule);
         }
     }
 }

@@ -122,7 +122,12 @@ myschedule/
 
 ### 一、服务端部署（在服务器上操作）
 
-以下文件上传到服务器后执行：
+将以下文件/目录上传到服务器：
+
+| 上传内容 | 服务器路径 |
+|---|---|
+| `server/` 目录 | `/root/myschedule/server/` |
+| `sql/init.sql` | `/root/myschedule/sql/init.sql` |
 
 #### 1. 数据库初始化
 

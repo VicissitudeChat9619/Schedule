@@ -4,7 +4,7 @@ NapCat 是基于 NTQQ 的机器人框架，可暴露 HTTP API 供后端调用发
 
 ## 1. 安装 NapCat
 
-在服务器 (your-server-ip) 上安装 NapCat：
+在你的服务器上安装 NapCat：
 
 ```bash
 # 使用 Docker 部署（推荐）
@@ -12,58 +12,75 @@ docker run -d \
   --name napcat \
   --restart always \
   -p 3000:3000 \
+  -p 6099:6099 \
   -v /root/napcat/config:/app/config \
   -v /root/napcat/data:/app/data \
-  napneko/napcat:latest
+  -e ACCOUNT=<你的QQ号> \
+  mlikiowa/napcat-docker:latest
 ```
 
-或参考官方文档：https://napneko.github.io/
+## 2. 登录 QQ
 
-## 2. 配置 HTTP Server
+启动后查看容器日志获取二维码：
 
-登录 NapCat WebUI 后，配置 HTTP Server：
+```bash
+docker logs napcat
+```
 
-- **监听地址**: 0.0.0.0
-- **监听端口**: 3000
+用手机 QQ 扫码登录，或在浏览器打开 `http://<服务器IP>:6099/webui` 扫码。
+
+## 3. 启用 HTTP API
+
+登录后进入 WebUI → 网络配置 → 添加 HTTP 服务器：
+
+- **名称**: schedule-http
+- **地址**: 0.0.0.0
+- **端口**: 3000
 - **启用**: 是
 
-## 3. QQ 登录
+或直接修改 OneBot11 配置文件 `onebot11_<QQ号>.json`：
 
-在 NapCat WebUI 中使用目标 QQ 号扫码登录。
+```json
+{
+  "network": {
+    "httpServers": [
+      {
+        "name": "schedule-http",
+        "enable": true,
+        "host": "0.0.0.0",
+        "port": 3000,
+        "enablePost": true,
+        "token": ""
+      }
+    ]
+  }
+}
+```
 
 ## 4. 后端对接
 
-后端已配置 NapCat API 地址为 `http://your-server-ip:3000`。
+在 `server/src/main/resources/application.yml` 中修改 NapCat API 地址：
 
-当提醒触发时，后端会调用：
+```yaml
+napcat:
+  api-url: http://localhost:3000
 ```
-POST http://your-server-ip:3000/send_private_msg
-Content-Type: application/json
 
+后端会调用 `POST <napcat-api-url>/send_private_msg` 发送消息：
+
+```json
 {
   "user_id": "目标QQ号",
   "message": "提醒消息内容"
 }
 ```
 
-### API 响应格式
-
-```json
-{
-  "status": "ok",
-  "retcode": 0,
-  "data": {
-    "message_id": 123456
-  }
-}
-```
-
 ## 5. 验证
 
-部署 NapCat 后，测试通信：
+部署后测试通信：
 
 ```bash
-curl -X POST http://your-server-ip:3000/send_private_msg \
+curl -X POST http://localhost:3000/send_private_msg \
   -H "Content-Type: application/json" \
   -d '{"user_id":"你的QQ号","message":"测试消息"}'
 ```

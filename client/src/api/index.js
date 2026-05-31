@@ -2,7 +2,7 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 const api = axios.create({
-  baseURL: 'http://your-server-ip:8080/api',
+  baseURL: 'http://localhost:8080/api',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json'

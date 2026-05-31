@@ -106,6 +106,26 @@ myschedule/
 
 ## 快速开始
 
+### 0. 配置服务器连接
+
+使用前需修改两处配置：
+
+**客户端 API 地址** (`client/src/api/index.js`)：
+```js
+baseURL: 'http://<你的服务器IP>:8080/api',
+```
+
+**服务端数据库** (`server/src/main/resources/application.yml`)：
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://<你的服务器IP>:3306/schedule
+    password: <你的MySQL密码>
+
+napcat:
+  api-url: http://localhost:3000
+```
+
 ### 1. 启动客户端
 
 双击 `start-client.bat` 或桌面快捷方式：

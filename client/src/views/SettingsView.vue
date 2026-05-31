@@ -19,7 +19,7 @@
         </el-form-item>
 
         <el-form-item label="服务器地址">
-          <el-tag>http://your-server-ip:8080</el-tag>
+          <el-tag>http://localhost:8080</el-tag>
         </el-form-item>
       </el-form>
     </el-card>

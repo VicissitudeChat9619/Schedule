@@ -10,12 +10,16 @@
         <el-button v-if="viewMode === 'list'" type="danger" plain :disabled="selectedIds.length === 0" @click="handleBatchDelete">
           批量删除 ({{ selectedIds.length }})
         </el-button>
+        <el-button v-if="viewMode === 'list' && expiredSchedules.length > 0" type="warning" plain @click="handleClearExpired">
+          清除过期 ({{ expiredSchedules.length }})
+        </el-button>
         <el-button type="primary" @click="openCreateDialog">新建日程</el-button>
       </div>
     </div>
 
     <el-card v-if="viewMode === 'list'">
       <el-table :data="schedules" style="width: 100%" v-loading="loading" empty-text="暂无日程"
+                :row-class-name="getRowClass"
                 @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="50" />
         <el-table-column prop="title" label="标题" min-width="180" />
@@ -69,8 +73,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
 import api from '../api'
 import ScheduleFormDialog from '../components/ScheduleForm.vue'
@@ -82,6 +86,14 @@ const dialogVisible = ref(false)
 const editingSchedule = ref(null)
 const selectedIds = ref([])
 const viewMode = ref('calendar')
+
+const expiredSchedules = computed(() => {
+  const now = dayjs()
+  return schedules.value.filter(s => {
+    const expireTime = s.endTime ? dayjs(s.endTime) : dayjs(s.startTime)
+    return now.isAfter(expireTime) && s.status !== false
+  })
+})
 
 function formatTime(time) {
   if (!time) return '-'
@@ -95,6 +107,12 @@ function repeatLabel(type) {
 
 function handleSelectionChange(selection) {
   selectedIds.value = selection.map(item => item.id)
+}
+
+function getRowClass({ row }) {
+  const now = dayjs()
+  const expireTime = row.endTime ? dayjs(row.endTime) : dayjs(row.startTime)
+  return now.isAfter(expireTime) ? 'row-expired' : ''
 }
 
 async function fetchSchedules() {
@@ -150,6 +168,23 @@ async function handleBatchDelete() {
   }
 }
 
+async function handleClearExpired() {
+  const titles = expiredSchedules.value.map(s => s.title)
+  try {
+    await ElMessageBox.confirm(
+      '以下日程已过期，确认删除？\n\n' + titles.map((t, i) => `${i + 1}. ${t}`).join('\n'),
+      '清除过期日程',
+      { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    const ids = expiredSchedules.value.map(s => s.id)
+    await api.post('/schedules/batch-delete', { ids })
+    ElMessage.success(`已清除 ${ids.length} 条过期日程`)
+    await fetchSchedules()
+  } catch (e) {
+    // cancelled or error
+  }
+}
+
 onMounted(fetchSchedules)
 </script>
 
@@ -158,5 +193,11 @@ onMounted(fetchSchedules)
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+:deep(.row-expired) {
+  background: #fef0f0 !important;
+  color: #f56c6c;
+  text-decoration: line-through;
 }
 </style>

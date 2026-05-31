@@ -4,6 +4,7 @@ import com.myschedule.dto.ScheduleRequest;
 import com.myschedule.entity.Schedule;
 import com.myschedule.repository.ScheduleRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -72,5 +73,20 @@ public class ScheduleService {
         }
 
         return schedule;
+    }
+
+    @Transactional
+    public int batchDelete(Long userId, List<Long> ids) {
+        int count = 0;
+        for (Long id : ids) {
+            Schedule schedule = scheduleRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("日程不存在: " + id));
+            if (!schedule.getUserId().equals(userId)) {
+                throw new RuntimeException("无权操作此日程: " + id);
+            }
+            scheduleRepository.delete(schedule);
+            count++;
+        }
+        return count;
     }
 }

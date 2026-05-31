@@ -1,6 +1,7 @@
 package com.myschedule.controller;
 
 import com.myschedule.dto.ApiResponse;
+import com.myschedule.dto.ArrangeRequest;
 import com.myschedule.dto.ScheduleRequest;
 import com.myschedule.entity.Schedule;
 import com.myschedule.entity.User;
@@ -69,6 +70,18 @@ public class ScheduleController {
         try {
             Schedule schedule = scheduleService.getById(user.getId(), id);
             return ResponseEntity.ok(ApiResponse.success(schedule));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(400, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/batch-delete")
+    public ResponseEntity<ApiResponse<Integer>> batchDelete(Authentication authentication,
+                                                              @Valid @RequestBody ArrangeRequest request) {
+        User user = (User) authentication.getPrincipal();
+        try {
+            int count = scheduleService.batchDelete(user.getId(), request.getIds());
+            return ResponseEntity.ok(ApiResponse.success(count));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(400, e.getMessage()));
         }

@@ -2,11 +2,18 @@
   <div class="page-container">
     <div class="page-header">
       <h2>日程管理</h2>
-      <el-button type="primary" @click="openCreateDialog">新建日程</el-button>
+      <div class="header-actions">
+        <el-button type="danger" plain :disabled="selectedIds.length === 0" @click="handleBatchDelete">
+          批量删除 ({{ selectedIds.length }})
+        </el-button>
+        <el-button type="primary" @click="openCreateDialog">新建日程</el-button>
+      </div>
     </div>
 
     <el-card>
-      <el-table :data="schedules" style="width: 100%" v-loading="loading" empty-text="暂无日程">
+      <el-table :data="schedules" style="width: 100%" v-loading="loading" empty-text="暂无日程"
+                @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="50" />
         <el-table-column prop="title" label="标题" min-width="180" />
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column label="开始时间" width="170">
@@ -52,6 +59,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import api from '../api'
 import ScheduleFormDialog from '../components/ScheduleForm.vue'
 
@@ -59,6 +67,7 @@ const schedules = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const editingSchedule = ref(null)
+const selectedIds = ref([])
 
 function formatTime(time) {
   if (!time) return '-'
@@ -68,6 +77,10 @@ function formatTime(time) {
 function repeatLabel(type) {
   const map = { NONE: '不重复', DAILY: '每天', WEEKLY: '每周', MONTHLY: '每月' }
   return map[type] || type
+}
+
+function handleSelectionChange(selection) {
+  selectedIds.value = selection.map(item => item.id)
 }
 
 async function fetchSchedules() {
@@ -103,5 +116,25 @@ async function handleDelete(id) {
   }
 }
 
+async function handleBatchDelete() {
+  if (selectedIds.value.length === 0) return
+  try {
+    await api.post('/schedules/batch-delete', { ids: selectedIds.value })
+    ElMessage.success(`已删除 ${selectedIds.value.length} 条日程`)
+    selectedIds.value = []
+    await fetchSchedules()
+  } catch (e) {
+    // error handled by interceptor
+  }
+}
+
 onMounted(fetchSchedules)
 </script>
+
+<style scoped>
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+</style>

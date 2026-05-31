@@ -19,7 +19,7 @@
         </el-form-item>
 
         <el-form-item label="服务器地址">
-          <el-tag>http://localhost:8080</el-tag>
+          <el-tag>{{ serverUrl }}</el-tag>
         </el-form-item>
       </el-form>
     </el-card>
@@ -42,11 +42,13 @@
 import { ref, reactive } from 'vue'
 import api from '../api'
 import { useAuthStore } from '../stores/auth'
+import config from '../config.js'
 
 const auth = useAuthStore()
 const bindVisible = ref(false)
 const bindLoading = ref(false)
 const bindFormRef = ref(null)
+const serverUrl = config.serverUrl
 
 const bindForm = reactive({
   qqNumber: ''

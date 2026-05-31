@@ -106,24 +106,46 @@ myschedule/
 
 ## 快速开始
 
-### 0. 配置服务器连接
+### 0. 配置文件（重要）
 
-使用前需修改两处配置：
+#### 客户端配置
 
-**客户端 API 地址** (`client/src/api/index.js`)：
-```js
-baseURL: 'http://<你的服务器IP>:8080/api',
+```bash
+cd client/src
+cp config.example.js config.js
 ```
 
-**服务端数据库** (`server/src/main/resources/application.yml`)：
+编辑 `config.js`，填入你的服务器地址：
+
+```js
+export default {
+  serverHost: '你的服务器IP',   // 如 192.168.1.100
+  serverPort: 8080,
+}
+```
+
+#### 服务端配置
+
+```bash
+cd server/src/main/resources
+cp application-local.example.yml application-local.yml
+```
+
+编辑 `application-local.yml`，填入数据库密码等信息：
+
 ```yaml
 spring:
   datasource:
-    url: jdbc:mysql://<你的服务器IP>:3306/schedule
-    password: <你的MySQL密码>
+    url: jdbc:mysql://你的服务器IP:3306/schedule
+    password: 你的MySQL密码
+```
 
-napcat:
-  api-url: http://localhost:3000
+> ⚠️ `config.js` 和 `application-local.yml` 已在 `.gitignore` 中排除，不会提交到 Git。
+
+启动服务端时指定 profile：
+
+```bash
+java -jar target/myschedule-server-1.0.0.jar --spring.profiles.active=local
 ```
 
 ### 1. 启动客户端

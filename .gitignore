@@ -16,7 +16,9 @@ client/dist-electron/
 .DS_Store
 Thumbs.db
 
-# Env
+# Env / Config (local only, see *.example.* templates)
 .env
 .env.local
 *.log
+**/config.js
+**/application-local.yml

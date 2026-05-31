@@ -22,12 +22,19 @@
           placeholder="选择开始时间"
           format="YYYY-MM-DD HH:mm:ss"
           value-format="YYYY-MM-DD HH:mm:ss"
-          style="width: 100%"
           @change="onStartTimeChange"
         />
       </el-form-item>
 
-      <el-form-item label="持续时间">
+      <el-form-item label="结束时间">
+        <el-radio-group v-model="form.endTimeMode" size="small" @change="onEndTimeModeChange">
+          <el-radio-button value="duration">持续时间</el-radio-button>
+          <el-radio-button value="datetime">截止日期</el-radio-button>
+          <el-radio-button value="none">不设置</el-radio-button>
+        </el-radio-group>
+      </el-form-item>
+
+      <el-form-item v-if="form.endTimeMode === 'duration'" label="">
         <div style="display: flex; gap: 6px; align-items: center; width: 100%">
           <el-input-number v-model="form.durationDays" :min="0" :max="365" placeholder="0" size="default" controls-position="right" style="width: 80px" @change="onDurationChange" />
           <span style="white-space: nowrap; color: #606266">天</span>
@@ -38,8 +45,19 @@
         </div>
       </el-form-item>
 
-      <el-form-item v-if="form.startTime && computedDuration > 0" label="预计结束">
-        <span style="color: #409eff; font-weight: 500">{{ calcEndTime() }}</span>
+      <el-form-item v-if="form.endTimeMode === 'datetime'" label="">
+        <el-date-picker
+          v-model="form.directEndTime"
+          type="datetime"
+          placeholder="选择截止日期"
+          format="YYYY-MM-DD HH:mm:ss"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          @change="updateEndTime"
+        />
+      </el-form-item>
+
+      <el-form-item v-if="computedEndTime" label="预计结束">
+        <span style="color: #409eff; font-weight: 500">{{ computedEndTime }}</span>
       </el-form-item>
 
       <el-form-item label="重复类型">
@@ -97,9 +115,11 @@ const form = reactive({
   description: '',
   startTime: null,
   endTime: null,
+  endTimeMode: 'none',
   durationDays: 0,
   durationHours: 0,
   durationMinutes: 0,
+  directEndTime: null,
   repeatType: 'NONE',
   reminderBeforeMinutes: 15,
   autoDelete: false
@@ -107,6 +127,16 @@ const form = reactive({
 
 const computedDuration = computed(() => {
   return form.durationDays * 1440 + form.durationHours * 60 + form.durationMinutes
+})
+
+const computedEndTime = computed(() => {
+  if (form.endTimeMode === 'datetime' && form.directEndTime) {
+    return dayjs(form.directEndTime).format('YYYY-MM-DD HH:mm')
+  }
+  if (form.endTimeMode === 'duration' && form.startTime && computedDuration.value > 0) {
+    return dayjs(form.startTime).add(computedDuration.value, 'minute').format('YYYY-MM-DD HH:mm')
+  }
+  return ''
 })
 
 const rules = {
@@ -124,10 +154,20 @@ watch(() => props.schedule, (val) => {
     form.repeatType = val.repeatType || 'NONE'
     form.reminderBeforeMinutes = val.reminderBeforeMinutes || 15
     form.autoDelete = val.autoDelete || false
-    const diff = calcDurationMinutes(val.startTime, val.endTime)
-    form.durationDays = Math.floor(diff / 1440)
-    form.durationHours = Math.floor((diff % 1440) / 60)
-    form.durationMinutes = diff % 60
+    if (val.endTime) {
+      form.endTimeMode = 'datetime'
+      form.directEndTime = val.endTime
+      const diff = calcDurationMinutes(val.startTime, val.endTime)
+      form.durationDays = Math.floor(diff / 1440)
+      form.durationHours = Math.floor((diff % 1440) / 60)
+      form.durationMinutes = diff % 60
+    } else {
+      form.endTimeMode = 'none'
+      form.directEndTime = null
+      form.durationDays = 0
+      form.durationHours = 0
+      form.durationMinutes = 0
+    }
   } else {
     isEdit.value = false
     resetForm()
@@ -139,20 +179,39 @@ function calcDurationMinutes(start, end) {
   return dayjs(end).diff(dayjs(start), 'minute')
 }
 
-function calcEndTime() {
-  if (!form.startTime || computedDuration.value <= 0) return ''
-  return dayjs(form.startTime).add(computedDuration.value, 'minute').format('YYYY-MM-DD HH:mm:ss')
-}
-
 function onStartTimeChange() {
-  if (computedDuration.value > 0) {
-    form.endTime = calcEndTime()
-  }
+  updateEndTime()
 }
 
 function onDurationChange() {
-  if (computedDuration.value > 0 && form.startTime) {
-    form.endTime = calcEndTime()
+  updateEndTime()
+}
+
+function onEndTimeModeChange(mode) {
+  if (mode === 'none') {
+    form.endTime = null
+    form.directEndTime = null
+    form.durationDays = 0
+    form.durationHours = 0
+    form.durationMinutes = 0
+  } else if (mode === 'datetime') {
+    form.durationDays = 0
+    form.durationHours = 0
+    form.durationMinutes = 0
+    if (form.directEndTime) {
+      form.endTime = form.directEndTime
+    }
+  } else if (mode === 'duration') {
+    form.directEndTime = null
+    updateEndTime()
+  }
+}
+
+function updateEndTime() {
+  if (form.endTimeMode === 'duration' && form.startTime && computedDuration.value > 0) {
+    form.endTime = dayjs(form.startTime).add(computedDuration.value, 'minute').format('YYYY-MM-DD HH:mm:ss')
+  } else if (form.endTimeMode === 'datetime' && form.directEndTime) {
+    form.endTime = form.directEndTime
   } else {
     form.endTime = null
   }
@@ -163,9 +222,11 @@ function resetForm() {
   form.description = ''
   form.startTime = null
   form.endTime = null
+  form.endTimeMode = 'none'
   form.durationDays = 0
   form.durationHours = 0
   form.durationMinutes = 0
+  form.directEndTime = null
   form.repeatType = 'NONE'
   form.reminderBeforeMinutes = 15
   form.autoDelete = false
@@ -179,11 +240,18 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
+    let payEndTime = null
+    if (form.endTimeMode === 'duration' && form.startTime && computedDuration.value > 0) {
+      payEndTime = dayjs(form.startTime).add(computedDuration.value, 'minute').format('YYYY-MM-DD HH:mm:ss')
+    } else if (form.endTimeMode === 'datetime' && form.directEndTime) {
+      payEndTime = form.directEndTime
+    }
+
     const payload = {
       title: form.title,
       description: form.description || null,
       startTime: form.startTime,
-      endTime: form.endTime || null,
+      endTime: payEndTime,
       repeatType: form.repeatType,
       reminderBeforeMinutes: form.reminderBeforeMinutes,
       autoDelete: form.autoDelete

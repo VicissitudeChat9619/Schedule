@@ -15,7 +15,7 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     List<Todo> findByStatusAndReminderSentFalse(String status);
 
-    @Query("SELECT t FROM Todo t WHERE t.reminderSent = false AND t.status = 'PENDING' " +
+    @Query("SELECT t FROM Todo t WHERE t.reminderSent = false AND t.status = 'UNARRANGED' " +
            "AND t.dueTime IS NOT NULL AND t.dueTime <= :now")
     List<Todo> findPendingReminders(@Param("now") LocalDateTime now);
 }

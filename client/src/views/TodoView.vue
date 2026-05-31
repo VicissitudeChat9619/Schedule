@@ -4,24 +4,37 @@
       <h2>待办事项</h2>
       <div class="header-actions">
         <el-radio-group v-model="filter" size="small" @change="fetchTodos">
+          <el-radio-button value="">未安排</el-radio-button>
           <el-radio-button value="ALL">全部</el-radio-button>
-          <el-radio-button value="PENDING">待完成</el-radio-button>
+          <el-radio-button value="DONE">已完成</el-radio-button>
         </el-radio-group>
         <el-button type="primary" @click="openCreateDialog">新建待办</el-button>
+        <el-button
+          v-if="filter === ''"
+          type="success"
+          :disabled="selectedIds.length === 0"
+          @click="handleArrange"
+        >
+          一键安排日程 ({{ selectedIds.length }})
+        </el-button>
       </div>
     </div>
 
     <el-card>
-      <el-table :data="todos" style="width: 100%" v-loading="loading" empty-text="暂无待办"
-                row-class-name="todo-row">
-        <el-table-column label="状态" width="70">
+      <el-table
+        :data="todos"
+        style="width: 100%"
+        v-loading="loading"
+        empty-text="暂无待办"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="50" v-if="filter === ''" />
+        <el-table-column label="状态" width="80">
           <template #default="{ row }">
-            <el-checkbox
-              v-if="row.status === 'PENDING'"
-              :model-value="false"
-              @change="handleMarkDone(row.id)"
-            />
-            <el-tag v-else type="success" size="small">已完成</el-tag>
+            <el-tag v-if="row.status === 'UNARRANGED'" type="warning" size="small">未安排</el-tag>
+            <el-tag v-else-if="row.status === 'ARRANGED'" type="success" size="small">已安排</el-tag>
+            <el-tag v-else-if="row.status === 'DONE'" type="info" size="small">已完成</el-tag>
+            <el-tag v-else size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="180">
@@ -72,14 +85,16 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import api from '../api'
 import TodoFormDialog from '../components/TodoForm.vue'
 
 const todos = ref([])
 const loading = ref(false)
-const filter = ref('ALL')
+const filter = ref('')
 const dialogVisible = ref(false)
 const editingTodo = ref(null)
+const selectedIds = ref([])
 
 function formatTime(time) {
   if (!time) return '-'
@@ -96,10 +111,14 @@ function priorityType(p) {
   return map[p] || 'warning'
 }
 
+function handleSelectionChange(selection) {
+  selectedIds.value = selection.map(item => item.id)
+}
+
 async function fetchTodos() {
   loading.value = true
   try {
-    const params = filter.value === 'PENDING' ? { status: 'PENDING' } : {}
+    const params = filter.value && filter.value !== 'ALL' ? { status: filter.value } : {}
     const res = await api.get('/todos', { params })
     if (res.data.code === 200) {
       todos.value = res.data.data
@@ -121,21 +140,29 @@ function openEditDialog(todo) {
   dialogVisible.value = true
 }
 
-async function handleMarkDone(id) {
-  try {
-    await api.put(`/todos/${id}/done`)
-    await fetchTodos()
-  } catch (e) {
-    // error handled by interceptor
-  }
-}
-
 async function handleDelete(id) {
   try {
     await api.delete(`/todos/${id}`)
     await fetchTodos()
   } catch (e) {
     // error handled by interceptor
+  }
+}
+
+async function handleArrange() {
+  if (selectedIds.value.length === 0) return
+  loading.value = true
+  try {
+    const res = await api.post('/todos/arrange', { ids: selectedIds.value })
+    if (res.data.code === 200) {
+      ElMessage.success(`已创建 ${res.data.data.length} 条日程`)
+      selectedIds.value = []
+      await fetchTodos()
+    }
+  } catch (e) {
+    // error handled by interceptor
+  } finally {
+    loading.value = false
   }
 }
 
@@ -147,6 +174,7 @@ onMounted(fetchTodos)
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .done-title {

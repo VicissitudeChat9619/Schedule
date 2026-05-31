@@ -67,7 +67,7 @@ public class ReminderService {
     }
 
     private void checkTodoReminders(LocalDateTime now) {
-        List<Todo> todos = todoRepository.findByStatusAndReminderSentFalse("PENDING");
+        List<Todo> todos = todoRepository.findByStatusAndReminderSentFalse("UNARRANGED");
         for (Todo todo : todos) {
             if (todo.getDueTime() == null) {
                 continue;

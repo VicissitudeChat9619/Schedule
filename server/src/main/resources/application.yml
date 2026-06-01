@@ -17,6 +17,10 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
 
+  web:
+    resources:
+      static-locations: file:/root/myschedule/static/,classpath:/static/
+
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai

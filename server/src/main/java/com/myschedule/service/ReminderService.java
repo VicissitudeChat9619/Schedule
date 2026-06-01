@@ -18,8 +18,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -27,6 +29,7 @@ public class ReminderService {
 
     private static final Logger log = LoggerFactory.getLogger(ReminderService.class);
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM-dd HH:mm");
 
     private final ScheduleRepository scheduleRepository;
     private final TodoRepository todoRepository;
@@ -55,8 +58,9 @@ public class ReminderService {
     public void checkAndSendReminders() {
         LocalDateTime now = LocalDateTime.now();
         checkScheduleReminders(now);
-        checkTodoReminders(now);
+        checkTodoDailyDigest(now);
         checkExpiredSchedules(now);
+        checkExpiredTodos(now);
     }
 
     private void checkScheduleReminders(LocalDateTime now) {
@@ -69,18 +73,73 @@ public class ReminderService {
         }
     }
 
-    private void checkTodoReminders(LocalDateTime now) {
-        List<Todo> todos = todoRepository.findByStatusAndReminderSentFalse("UNARRANGED");
-        for (Todo todo : todos) {
-            if (todo.getDueTime() == null) {
+    private void checkTodoDailyDigest(LocalDateTime now) {
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            if (user.getQqNumber() == null || user.getNapcatUserId() == null) {
                 continue;
             }
 
-            LocalDateTime remindTime = todo.getDueTime().minusMinutes(todo.getReminderBeforeMinutes());
-            if (now.isAfter(remindTime) || now.isEqual(remindTime)) {
-                sendTodoReminder(todo);
+            if (user.getTodoDailyRemindedAt() != null &&
+                user.getTodoDailyRemindedAt().toLocalDate().equals(LocalDate.now())) {
+                continue;
             }
+
+            List<Todo> activeTodos = todoRepository.findActiveWithDueTime();
+            List<Todo> userTodos = activeTodos.stream()
+                    .filter(t -> t.getUserId().equals(user.getId()))
+                    .sorted(Comparator.comparing(Todo::getDueTime, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList();
+
+            if (userTodos.isEmpty()) {
+                continue;
+            }
+
+            String message = buildTodoDailyDigest(userTodos);
+            String result = sendToQQ(user.getNapcatUserId(), message);
+
+            ReminderLog logEntry = ReminderLog.builder()
+                    .userId(user.getId())
+                    .targetType("TODO_DAILY")
+                    .targetId(0L)
+                    .content(message)
+                    .sendStatus(result != null ? "SUCCESS" : "FAILED")
+                    .response(result)
+                    .sendTime(LocalDateTime.now())
+                    .build();
+            reminderLogRepository.save(logEntry);
+
+            user.setTodoDailyRemindedAt(now);
+            userRepository.save(user);
         }
+    }
+
+    private String buildTodoDailyDigest(List<Todo> todos) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("【今日待办提醒】\n\n");
+
+        int idx = 1;
+        for (Todo todo : todos) {
+            String title = todo.getTitle();
+            String due = todo.getDueTime() != null ? todo.getDueTime().format(DATE_FMT) : "未设置";
+            sb.append(idx).append(". ").append(title)
+              .append(" [").append(getPriorityLabel(todo.getPriority()).trim()).append("]")
+              .append(" 截止: ").append(due).append("\n");
+            idx++;
+        }
+
+        sb.append("\n共 ").append(todos.size()).append(" 项待办，请及时处理。");
+        return sb.toString();
+    }
+
+
+    private String getPriorityLabel(Integer priority) {
+        if (priority == null) return "普通";
+        return switch (priority) {
+            case 1 -> "高  ";
+            case 3 -> "低  ";
+            default -> "普通";
+        };
     }
 
     private void sendScheduleReminder(Schedule schedule) {
@@ -92,7 +151,7 @@ public class ReminderService {
         String message = buildScheduleMessage(schedule);
         String result = sendToQQ(user.getNapcatUserId(), message);
 
-        ReminderLog log = ReminderLog.builder()
+        ReminderLog logEntry = ReminderLog.builder()
                 .userId(user.getId())
                 .targetType("SCHEDULE")
                 .targetId(schedule.getId())
@@ -101,37 +160,11 @@ public class ReminderService {
                 .response(result)
                 .sendTime(LocalDateTime.now())
                 .build();
-        reminderLogRepository.save(log);
+        reminderLogRepository.save(logEntry);
 
         if (result != null) {
             schedule.setReminderSent(true);
             scheduleRepository.save(schedule);
-        }
-    }
-
-    private void sendTodoReminder(Todo todo) {
-        User user = userRepository.findById(todo.getUserId()).orElse(null);
-        if (user == null || user.getQqNumber() == null) {
-            return;
-        }
-
-        String message = buildTodoMessage(todo);
-        String result = sendToQQ(user.getNapcatUserId(), message);
-
-        ReminderLog log = ReminderLog.builder()
-                .userId(user.getId())
-                .targetType("TODO")
-                .targetId(todo.getId())
-                .content(message)
-                .sendStatus(result != null ? "SUCCESS" : "FAILED")
-                .response(result)
-                .sendTime(LocalDateTime.now())
-                .build();
-        reminderLogRepository.save(log);
-
-        if (result != null) {
-            todo.setReminderSent(true);
-            todoRepository.save(todo);
         }
     }
 
@@ -142,34 +175,11 @@ public class ReminderService {
         if (schedule.getDescription() != null && !schedule.getDescription().isEmpty()) {
             sb.append("内容: ").append(schedule.getDescription()).append("\n");
         }
-        sb.append("时间: ").append(schedule.getStartTime()).append("\n");
+        sb.append("时间: ").append(schedule.getStartTime().format(DT_FMT)).append("\n");
         if (schedule.getEndTime() != null) {
-            sb.append("结束: ").append(schedule.getEndTime()).append("\n");
+            sb.append("结束: ").append(schedule.getEndTime().format(DT_FMT)).append("\n");
         }
         return sb.toString();
-    }
-
-    private String buildTodoMessage(Todo todo) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("【待办提醒】\n");
-        sb.append("事项: ").append(todo.getTitle()).append("\n");
-        if (todo.getDescription() != null && !todo.getDescription().isEmpty()) {
-            sb.append("详情: ").append(todo.getDescription()).append("\n");
-        }
-        sb.append("优先级: ").append(getPriorityLabel(todo.getPriority())).append("\n");
-        if (todo.getDueTime() != null) {
-            sb.append("截止: ").append(todo.getDueTime()).append("\n");
-        }
-        return sb.toString();
-    }
-
-    private String getPriorityLabel(Integer priority) {
-        if (priority == null) return "普通";
-        return switch (priority) {
-            case 1 -> "高";
-            case 3 -> "低";
-            default -> "普通";
-        };
     }
 
     private String sendToQQ(String targetUserId, String message) {
@@ -207,13 +217,13 @@ public class ReminderService {
                     log.info("Auto-deleting expired schedule: {}", schedule.getTitle());
                     scheduleRepository.delete(schedule);
                 } else {
-                    sendExpiredNotification(schedule);
+                    sendExpiredScheduleNotification(schedule);
                 }
             }
         }
     }
 
-    private void sendExpiredNotification(Schedule schedule) {
+    private void sendExpiredScheduleNotification(Schedule schedule) {
         User user = userRepository.findById(schedule.getUserId()).orElse(null);
         if (user == null || user.getQqNumber() == null) {
             return;
@@ -229,7 +239,7 @@ public class ReminderService {
 
         String result = sendToQQ(user.getNapcatUserId(), message);
 
-        ReminderLog log = ReminderLog.builder()
+        ReminderLog logEntry = ReminderLog.builder()
                 .userId(user.getId())
                 .targetType("SCHEDULE_EXPIRED")
                 .targetId(schedule.getId())
@@ -238,11 +248,54 @@ public class ReminderService {
                 .response(result)
                 .sendTime(LocalDateTime.now())
                 .build();
-        reminderLogRepository.save(log);
+        reminderLogRepository.save(logEntry);
 
         if (result != null) {
             schedule.setExpiredNotified(true);
             scheduleRepository.save(schedule);
+        }
+    }
+
+    private void checkExpiredTodos(LocalDateTime now) {
+        List<Todo> expiredTodos = todoRepository.findExpiredNotNotified(now);
+        for (Todo todo : expiredTodos) {
+            if (todo.getAutoDelete() != null && todo.getAutoDelete()) {
+                log.info("Auto-deleting expired todo: {}", todo.getTitle());
+                todoRepository.delete(todo);
+            } else {
+                sendExpiredTodoNotification(todo);
+            }
+        }
+    }
+
+    private void sendExpiredTodoNotification(Todo todo) {
+        User user = userRepository.findById(todo.getUserId()).orElse(null);
+        if (user == null || user.getQqNumber() == null) {
+            return;
+        }
+
+        String message = "【待办过期提醒】\n您的待办「" + todo.getTitle() + "」";
+        if (todo.getDueTime() != null) {
+            message += "已于 " + todo.getDueTime().format(DT_FMT) + " 过期";
+        }
+        message += "，请及时处理。";
+
+        String result = sendToQQ(user.getNapcatUserId(), message);
+
+        ReminderLog logEntry = ReminderLog.builder()
+                .userId(user.getId())
+                .targetType("TODO_EXPIRED")
+                .targetId(todo.getId())
+                .content(message)
+                .sendStatus(result != null ? "SUCCESS" : "FAILED")
+                .response(result)
+                .sendTime(LocalDateTime.now())
+                .build();
+        reminderLogRepository.save(logEntry);
+
+        if (result != null) {
+            todo.setExpiredNotified(true);
+            todoRepository.save(todo);
         }
     }
 }

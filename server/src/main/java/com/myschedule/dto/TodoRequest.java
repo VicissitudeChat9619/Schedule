@@ -16,4 +16,6 @@ public class TodoRequest {
     private LocalDateTime dueTime;
 
     private Integer reminderBeforeMinutes = 30;
+
+    private Boolean autoDelete = false;
 }

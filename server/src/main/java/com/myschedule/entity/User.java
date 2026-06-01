@@ -28,6 +28,9 @@ public class User {
     @Column(name = "napcat_user_id", length = 50)
     private String napcatUserId;
 
+    @Column(name = "todo_daily_reminded_at")
+    private LocalDateTime todoDailyRemindedAt;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

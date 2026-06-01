@@ -24,18 +24,33 @@
           <div class="day-number">{{ day.date }}</div>
           <div class="day-events">
             <div
-              v-for="evt in day.events"
-              :key="evt.id"
-              class="event-bar"
+              v-for="evt in day.scheduleEvents"
+              :key="'s-' + evt.id"
+              class="event-bar schedule-bar"
               :class="{ 'is-expired': isExpired(evt) }"
-              :style="eventBarStyle(evt, day.events)"
-              :title="formatEventTime(evt) + ' ' + evt.title + (evt.description ? '\n' + evt.description : '')"
-              @click.stop="onEventClick(evt)"
+              :style="scheduleBarStyle(evt, day.scheduleEvents)"
+              :title="formatScheduleTooltip(evt)"
+              @click.stop="onScheduleClick(evt)"
             >
               {{ evt.title }}
             </div>
-            <div v-if="day.events.length > maxVisible" class="more-events" @click.stop="onDayClick(day)">
-              +{{ day.events.length - maxVisible }} 更多
+            <div
+              v-for="todo in day.todoEvents"
+              :key="'t-' + todo.id"
+              class="event-bar todo-bar"
+              :class="{ 'is-expired': isTodoExpired(todo) }"
+              :style="todoBarStyle(todo)"
+              :title="formatTodoTooltip(todo)"
+              @click.stop="onTodoClick(todo)"
+            >
+              ◼ {{ todo.title }}
+            </div>
+            <div
+              v-if="day.eventsTotal.length > maxVisible"
+              class="more-events"
+              @click.stop="onDayClick(day)"
+            >
+              +{{ day.eventsTotal.length - maxVisible }} 更多
             </div>
           </div>
         </div>
@@ -47,12 +62,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import dayjs from 'dayjs'
+import { getTodoColor } from '../utils/colors.js'
 
 const props = defineProps({
-  schedules: { type: Array, default: () => [] }
+  schedules: { type: Array, default: () => [] },
+  todos: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['dayClick', 'eventClick'])
+const emit = defineEmits(['dayClick', 'eventClick', 'todoClick'])
 
 const currentDate = ref(dayjs())
 const maxVisible = ref(3)
@@ -68,7 +85,7 @@ const dayHeaders = ['日', '一', '二', '三', '四', '五', '六']
 const year = computed(() => currentDate.value.year())
 const month = computed(() => currentDate.value.month() + 1)
 
-function getColor(schedule) {
+function getScheduleColor(schedule) {
   let hash = 0
   for (let i = 0; i < schedule.title.length; i++) {
     hash = schedule.title.charCodeAt(i) + ((hash << 5) - hash)
@@ -76,8 +93,29 @@ function getColor(schedule) {
   return COLORS[Math.abs(hash) % COLORS.length]
 }
 
-function formatEventTime(evt) {
-  return dayjs(evt.startTime).format('HH:mm')
+function formatScheduleTooltip(evt) {
+  let t = dayjs(evt.startTime).format('HH:mm')
+  if (evt.endTime) {
+    t += ' - ' + dayjs(evt.endTime).format('HH:mm')
+  }
+  t += ' ' + evt.title
+  if (evt.description) {
+    t += '\n' + evt.description
+  }
+  return t
+}
+
+function formatTodoTooltip(todo) {
+  const prioMap = { 1: '高', 2: '中', 3: '低' }
+  let t = '[待办] ' + todo.title
+  if (todo.dueTime) {
+    t += '\n截止: ' + dayjs(todo.dueTime).format('YYYY-MM-DD HH:mm')
+  }
+  t += '\n优先级: ' + (prioMap[todo.priority] || '中')
+  if (todo.description) {
+    t += '\n' + todo.description
+  }
+  return t
 }
 
 function isExpired(evt) {
@@ -86,15 +124,15 @@ function isExpired(evt) {
   return now.isAfter(expireTime)
 }
 
-function durationMinutes(evt) {
-  if (!evt.endTime) return 60
-  return dayjs(evt.endTime).diff(dayjs(evt.startTime), 'minute')
+function isTodoExpired(todo) {
+  if (!todo.dueTime) return false
+  return dayjs().isAfter(dayjs(todo.dueTime))
 }
 
-function eventBarStyle(evt, allEvents) {
-  const color = getColor(evt)
-  const dur = durationMinutes(evt)
-  const pct = Math.min(100, Math.max(20, (dur / 480) * 100))
+function scheduleBarStyle(evt, allEvents) {
+  const color = getScheduleColor(evt)
+  const chars = (evt.title || '').length
+  const pct = Math.min(90, Math.max(35, chars * 8))
   const idx = allEvents.indexOf(evt)
   if (isExpired(evt)) {
     return {
@@ -113,6 +151,50 @@ function eventBarStyle(evt, allEvents) {
   }
 }
 
+function todoBarStyle(todo) {
+  const color = getTodoColor(todo)
+  if (isTodoExpired(todo)) {
+    return {
+      borderColor: '#f56c6c',
+      color: '#f56c6c',
+      background: 'transparent',
+      width: '85%'
+    }
+  }
+  return {
+    background: color,
+    width: '85%',
+    opacity: 0.9
+  }
+}
+
+function matchesScheduleDate(schedule, dateStr) {
+  const sStart = dayjs(schedule.startTime)
+  const sEnd = schedule.endTime ? dayjs(schedule.endTime) : null
+  const target = dayjs(dateStr)
+
+  if (target.isBefore(sStart, 'day')) return false
+  if (sEnd && target.isAfter(sEnd, 'day')) return false
+
+  const repeatType = schedule.repeatType || 'NONE'
+
+  if (repeatType === 'NONE' || repeatType === 'DAILY') {
+    return true
+  }
+
+  if (repeatType === 'WEEKLY') {
+    return target.day() === sStart.day()
+  }
+
+  if (repeatType === 'MONTHLY') {
+    const startDay = sStart.date()
+    const lastDayOfMonth = target.daysInMonth()
+    return target.date() === Math.min(startDay, lastDayOfMonth)
+  }
+
+  return true
+}
+
 const days = computed(() => {
   const start = currentDate.value.startOf('month').startOf('week')
   const end = currentDate.value.endOf('month').endOf('week')
@@ -122,17 +204,25 @@ const days = computed(() => {
   let d = start
   while (d.isBefore(end) || d.isSame(end, 'day')) {
     const dateStr = d.format('YYYY-MM-DD')
-    const events = props.schedules.filter(s => {
+
+    const scheduleEvents = props.schedules.filter(s => {
       if (s.status === false) return false
-      const sStart = dayjs(s.startTime).format('YYYY-MM-DD')
-      const sEnd = s.endTime ? dayjs(s.endTime).format('YYYY-MM-DD') : sStart
-      return dateStr >= sStart && dateStr <= sEnd
+      return matchesScheduleDate(s, dateStr)
     })
+
+    const todoEvents = props.todos.filter(t => {
+      if (t.status !== 'ACTIVE' || !t.dueTime) return false
+      return dayjs(t.dueTime).format('YYYY-MM-DD') === dateStr
+    })
+
+    const eventsTotal = [...scheduleEvents, ...todoEvents]
 
     result.push({
       date: d.date(),
       dateStr,
-      events,
+      scheduleEvents,
+      todoEvents,
+      eventsTotal,
       isToday: dateStr === today,
       isOtherMonth: d.month() !== currentDate.value.month()
     })
@@ -157,8 +247,12 @@ function onDayClick(day) {
   emit('dayClick', day.dateStr)
 }
 
-function onEventClick(evt) {
+function onScheduleClick(evt) {
   emit('eventClick', evt)
+}
+
+function onTodoClick(todo) {
+  emit('todoClick', todo)
 }
 </script>
 
@@ -289,6 +383,15 @@ function onEventClick(evt) {
 .event-bar.is-expired:hover {
   background: rgba(245, 108, 108, 0.1) !important;
   filter: none;
+}
+
+.todo-bar {
+  border-radius: 0;
+  border-left: 3px solid currentColor;
+}
+
+.schedule-bar {
+  border-radius: 3px;
 }
 
 .more-events {

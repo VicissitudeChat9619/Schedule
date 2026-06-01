@@ -1,7 +1,7 @@
 package com.myschedule.controller;
 
 import com.myschedule.dto.ApiResponse;
-import com.myschedule.dto.ArrangeRequest;
+import com.myschedule.dto.BatchRequest;
 import com.myschedule.dto.ScheduleRequest;
 import com.myschedule.entity.Schedule;
 import com.myschedule.entity.User;
@@ -77,7 +77,7 @@ public class ScheduleController {
 
     @PostMapping("/batch-delete")
     public ResponseEntity<ApiResponse<Integer>> batchDelete(Authentication authentication,
-                                                              @Valid @RequestBody ArrangeRequest request) {
+                                                               @Valid @RequestBody BatchRequest request) {
         User user = (User) authentication.getPrincipal();
         try {
             int count = scheduleService.batchDelete(user.getId(), request.getIds());

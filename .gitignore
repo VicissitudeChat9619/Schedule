@@ -22,3 +22,5 @@ Thumbs.db
 *.log
 **/config.js
 **/application-local.yml
+aitalk.md
+AGENTS.md

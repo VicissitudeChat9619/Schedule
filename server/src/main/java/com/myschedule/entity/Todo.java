@@ -39,9 +39,17 @@ public class Todo {
     @Builder.Default
     private Boolean reminderSent = false;
 
+    @Column(name = "expired_notified")
+    @Builder.Default
+    private Boolean expiredNotified = false;
+
+    @Column(name = "auto_delete")
+    @Builder.Default
+    private Boolean autoDelete = false;
+
     @Column(length = 20)
     @Builder.Default
-    private String status = "UNARRANGED";
+    private String status = "ACTIVE";
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;

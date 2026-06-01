@@ -44,6 +44,10 @@
           <el-option label="1 天" :value="1440" />
         </el-select>
       </el-form-item>
+
+      <el-form-item label="">
+        <el-checkbox v-model="form.autoDelete">过期后自动删除（不发送提醒）</el-checkbox>
+      </el-form-item>
     </el-form>
 
     <template #footer>
@@ -75,7 +79,8 @@ const form = reactive({
   description: '',
   priority: 2,
   dueTime: null,
-  reminderBeforeMinutes: 30
+  reminderBeforeMinutes: 30,
+  autoDelete: false
 })
 
 const rules = {
@@ -90,6 +95,7 @@ watch(() => props.todo, (val) => {
     form.priority = val.priority || 2
     form.dueTime = val.dueTime || null
     form.reminderBeforeMinutes = val.reminderBeforeMinutes || 30
+    form.autoDelete = val.autoDelete || false
   } else {
     isEdit.value = false
     resetForm()
@@ -102,6 +108,7 @@ function resetForm() {
   form.priority = 2
   form.dueTime = null
   form.reminderBeforeMinutes = 30
+  form.autoDelete = false
   formRef.value?.resetFields()
   isEdit.value = false
 }
@@ -117,7 +124,8 @@ async function handleSubmit() {
       description: form.description || null,
       priority: form.priority,
       dueTime: form.dueTime || null,
-      reminderBeforeMinutes: form.reminderBeforeMinutes
+      reminderBeforeMinutes: form.reminderBeforeMinutes,
+      autoDelete: form.autoDelete
     }
 
     if (isEdit.value && props.todo?.id) {

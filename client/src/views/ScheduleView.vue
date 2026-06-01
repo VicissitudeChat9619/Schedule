@@ -60,30 +60,45 @@
     <CalendarView
       v-else
       :schedules="schedules"
+      :todos="todos"
       @day-click="onCalendarDayClick"
       @event-click="onCalendarEventClick"
+      @todo-click="onCalendarTodoClick"
     />
 
     <ScheduleFormDialog
       v-model:visible="dialogVisible"
       :schedule="editingSchedule"
-      @saved="fetchSchedules"
+      @saved="fetchData"
+    />
+
+    <TodoFormDialog
+      v-model:visible="todoDialogVisible"
+      :todo="editingTodo"
+      @saved="fetchData"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
 import api from '../api'
 import ScheduleFormDialog from '../components/ScheduleForm.vue'
+import TodoFormDialog from '../components/TodoForm.vue'
 import CalendarView from '../components/CalendarView.vue'
+import { useTodoRefresh } from '../stores/refresh.js'
+
+const { todoRefresh } = useTodoRefresh()
 
 const schedules = ref([])
+const todos = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const editingSchedule = ref(null)
+const todoDialogVisible = ref(false)
+const editingTodo = ref(null)
 const selectedIds = ref([])
 const viewMode = ref('calendar')
 
@@ -116,14 +131,27 @@ function getRowClass({ row }) {
 }
 
 async function fetchSchedules() {
-  loading.value = true
+  const res = await api.get('/schedules')
+  if (res.data.code === 200) {
+    schedules.value = res.data.data
+  }
+}
+
+async function fetchTodos() {
   try {
-    const res = await api.get('/schedules')
+    const res = await api.get('/todos', { params: { status: 'ACTIVE' } })
     if (res.data.code === 200) {
-      schedules.value = res.data.data
+      todos.value = res.data.data
     }
   } catch (e) {
     // error handled by interceptor
+  }
+}
+
+async function fetchData() {
+  loading.value = true
+  try {
+    await Promise.all([fetchSchedules(), fetchTodos()])
   } finally {
     loading.value = false
   }
@@ -147,10 +175,15 @@ function onCalendarEventClick(evt) {
   openEditDialog(evt)
 }
 
+function onCalendarTodoClick(todo) {
+  editingTodo.value = { ...todo }
+  todoDialogVisible.value = true
+}
+
 async function handleDelete(id) {
   try {
     await api.delete(`/schedules/${id}`)
-    await fetchSchedules()
+    await fetchData()
   } catch (e) {
     // error handled by interceptor
   }
@@ -162,7 +195,7 @@ async function handleBatchDelete() {
     await api.post('/schedules/batch-delete', { ids: selectedIds.value })
     ElMessage.success(`已删除 ${selectedIds.value.length} 条日程`)
     selectedIds.value = []
-    await fetchSchedules()
+    await fetchData()
   } catch (e) {
     // error handled by interceptor
   }
@@ -179,13 +212,17 @@ async function handleClearExpired() {
     const ids = expiredSchedules.value.map(s => s.id)
     await api.post('/schedules/batch-delete', { ids })
     ElMessage.success(`已清除 ${ids.length} 条过期日程`)
-    await fetchSchedules()
+    await fetchData()
   } catch (e) {
     // cancelled or error
   }
 }
 
-onMounted(fetchSchedules)
+onMounted(fetchData)
+
+watch(todoRefresh, () => {
+  fetchTodos()
+})
 </script>
 
 <style scoped>

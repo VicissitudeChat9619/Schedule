@@ -18,4 +18,13 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
     @Query("SELECT t FROM Todo t WHERE t.reminderSent = false AND t.status = 'UNARRANGED' " +
            "AND t.dueTime IS NOT NULL AND t.dueTime <= :now")
     List<Todo> findPendingReminders(@Param("now") LocalDateTime now);
+
+    List<Todo> findByStatusAndExpiredNotifiedFalse(String status);
+
+    @Query("SELECT t FROM Todo t WHERE t.status = 'ACTIVE' AND t.dueTime IS NOT NULL ORDER BY t.dueTime ASC")
+    List<Todo> findActiveWithDueTime();
+
+    @Query("SELECT t FROM Todo t WHERE t.status = 'ACTIVE' AND t.expiredNotified = false " +
+           "AND t.dueTime IS NOT NULL AND t.dueTime <= :now")
+    List<Todo> findExpiredNotNotified(@Param("now") LocalDateTime now);
 }

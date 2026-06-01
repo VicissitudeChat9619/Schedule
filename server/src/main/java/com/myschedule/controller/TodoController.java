@@ -1,9 +1,7 @@
 package com.myschedule.controller;
 
 import com.myschedule.dto.ApiResponse;
-import com.myschedule.dto.ArrangeRequest;
 import com.myschedule.dto.TodoRequest;
-import com.myschedule.entity.Schedule;
 import com.myschedule.entity.Todo;
 import com.myschedule.entity.User;
 import com.myschedule.service.TodoService;
@@ -28,12 +26,7 @@ public class TodoController {
     public ResponseEntity<ApiResponse<List<Todo>>> list(Authentication authentication,
                                                          @RequestParam(required = false) String status) {
         User user = (User) authentication.getPrincipal();
-        List<Todo> todos;
-        if (status == null || status.isEmpty()) {
-            todos = todoService.listUnarranged(user.getId());
-        } else {
-            todos = todoService.listByStatus(user.getId(), status);
-        }
+        List<Todo> todos = todoService.listByStatus(user.getId(), status);
         return ResponseEntity.ok(ApiResponse.success(todos));
     }
 
@@ -70,6 +63,18 @@ public class TodoController {
         }
     }
 
+    @PutMapping("/{id}/undo")
+    public ResponseEntity<ApiResponse<Todo>> markUndo(Authentication authentication,
+                                                       @PathVariable Long id) {
+        User user = (User) authentication.getPrincipal();
+        try {
+            Todo todo = todoService.markUndo(user.getId(), id);
+            return ResponseEntity.ok(ApiResponse.success(todo));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(400, e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(Authentication authentication,
                                                      @PathVariable Long id) {
@@ -89,18 +94,6 @@ public class TodoController {
         try {
             Todo todo = todoService.getById(user.getId(), id);
             return ResponseEntity.ok(ApiResponse.success(todo));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(400, e.getMessage()));
-        }
-    }
-
-    @PostMapping("/arrange")
-    public ResponseEntity<ApiResponse<List<Schedule>>> arrange(Authentication authentication,
-                                                                @Valid @RequestBody ArrangeRequest request) {
-        User user = (User) authentication.getPrincipal();
-        try {
-            List<Schedule> schedules = todoService.arrange(user.getId(), request.getIds());
-            return ResponseEntity.ok(ApiResponse.success(schedules));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(400, e.getMessage()));
         }
